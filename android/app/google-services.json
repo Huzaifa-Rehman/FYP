@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "783128459089",
+    "project_id": "speedygroccer",
+    "storage_bucket": "speedygroccer.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:783128459089:android:259ba01ec0f81a259c4570",
+        "android_client_info": {
+          "package_name": "com.example.speedygrocer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDpNQ_maYho24NancqL9XjPhEYPML3Z4aA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
