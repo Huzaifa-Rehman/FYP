@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -127,5 +128,33 @@ class InventoryPredictor {
       {'day': 'Sat', 'demand': 95},
       {'day': 'Sun', 'demand': 70},
     ];
+  }
+
+  // ───────── AI Forecast (Real Scikit-Learn Model on Render) ─────────
+  // Standalone, on-demand only — never called automatically on screen load,
+  // so a sleeping/slow Render free-tier instance never blocks the main dashboard.
+  Future<Map<String, dynamic>> getAIForecast(List<String> products) async {
+    const String mlApiUrl = 'https://speedygrocer-ml.onrender.com/predict';
+
+    try {
+      final response = await http.post(
+        Uri.parse(mlApiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'products': products}),
+      ).timeout(const Duration(seconds: 45));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'predictions': Map<String, dynamic>.from(data['predictedDemand'] ?? {}),
+        };
+      }
+      return {'success': false, 'error': 'Server returned ${response.statusCode}'};
+    } on TimeoutException {
+      return {'success': false, 'error': 'timeout'};
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
   }
 }

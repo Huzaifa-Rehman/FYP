@@ -858,6 +858,38 @@ class _InventoryTabState extends State<_InventoryTab> {
                         },
                       ),
 
+                    // ── AI Demand Forecast (Beta) ──
+                    SliverToBoxAdapter(
+                      child: Container(
+                        margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.purple.shade100),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.psychology_alt, color: Colors.purple, size: 22),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('AI Demand Forecast', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                                  Text('Runs our scikit-learn model (beta)', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => _showAIForecastSheet(context, products),
+                              child: const Text('Run'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
                     // ── Product List ──
                     const SliverToBoxAdapter(
                       child: Padding(
@@ -979,6 +1011,67 @@ class _InventoryTabState extends State<_InventoryTab> {
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Add Product', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
+    );
+  }
+
+  void _showAIForecastSheet(BuildContext context, List<ProductModel> products) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return FutureBuilder<Map<String, dynamic>>(
+          future: _predictor.getAIForecast(products.map((p) => p.name).toList()),
+          builder: (ctx, snap) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20, right: 20, top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.psychology_alt, color: Colors.purple),
+                      SizedBox(width: 8),
+                      Text('AI Demand Forecast', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (snap.connectionState == ConnectionState.waiting) ...[
+                    const Center(child: CircularProgressIndicator()),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Contacting the model server. This can take up to a minute if it just woke up.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                  ] else if (snap.data?['success'] == true) ...[
+                    ...((snap.data!['predictions'] as Map<String, dynamic>).entries.map((e) => ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.trending_up, color: Colors.purple),
+                          title: Text(e.key),
+                          trailing: Text('${e.value} units/day predicted'),
+                        ))),
+                  ] else ...[
+                    Icon(Icons.cloud_off, color: Colors.grey.shade400, size: 40),
+                    const SizedBox(height: 8),
+                    Text(
+                      snap.data?['error'] == 'timeout'
+                          ? 'The model server took too long to respond (it may be waking up). Please try again in a moment.'
+                          : 'Could not reach the AI model server right now.',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -21,9 +21,10 @@ pluginManagement {
 plugins {
         id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
         id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-        id("com.android.application") version "8.1.0" apply false
-        id("com.android.library") version "8.1.0" apply false
-        id("org.jetbrains.kotlin.android") version "1.9.0" apply false
+        id("com.android.application") version "8.11.1" apply false
+        id("com.android.library") version "8.11.1" apply false
+
+
         id("com.google.gms.google-services") version "4.4.2" apply false
 
 }
