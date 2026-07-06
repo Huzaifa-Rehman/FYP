@@ -18,6 +18,9 @@ import '../../services/route_optimizer.dart';
 import '../../widgets/live_map_widget.dart';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
+import '../../services/feedback_service.dart';
+import '../../models/feedback_model.dart';
+import 'package:intl/intl.dart';
 
 class RiderDashboard extends StatefulWidget {
   const RiderDashboard({super.key});
@@ -166,6 +169,7 @@ class _RiderDashboardState extends State<RiderDashboard> {
       _HomeTab(user: user, orderService: orderService, isOnline: _isOnline, onToggleOnline: (v) => setState(() => _isOnline = v)),
       _EarningsTab(user: user, orderService: orderService),
       _OrdersTab(user: user, orderService: orderService),
+      _RatingsTab(riderId: user.uid ?? ''),
       _ProfileTab(user: user),
     ];
 
@@ -192,7 +196,8 @@ class _RiderDashboardState extends State<RiderDashboard> {
           _navItem(Icons.home, "Home", 0),
           _navItem(Icons.payments_outlined, "Earnings", 1),
           _navItem(Icons.assignment_outlined, "Orders", 2),
-          _navItem(Icons.person_outline, "Profile", 3),
+          _navItem(Icons.star_outline, "Ratings", 3),
+          _navItem(Icons.person_outline, "Profile", 4),
         ],
       ),
     );
@@ -585,7 +590,7 @@ class _ActiveDeliveryCardWidgetState extends State<_ActiveDeliveryCardWidget> {
       ..strokeWidth = 3.0;
     canvas.drawCircle(Offset(size / 2, size / 2), size / 2 - 2, borderPaint);
 
-    final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
+    final TextPainter textPainter = TextPainter(textDirection: ui.TextDirection.ltr);
     textPainter.text = TextSpan(
       text: String.fromCharCode(icon.codePoint),
       style: TextStyle(
@@ -1297,6 +1302,127 @@ class _ProfileAvatarState extends State<_ProfileAvatar> {
           Positioned(right: 0, bottom: 0, child: Container(padding: const EdgeInsets.all(4), decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle), child: const Icon(Icons.edit, color: AppColors.primaryGreen, size: 20))),
         ],
       ),
+    );
+  }
+}
+
+// ─────── Ratings Tab ───────
+class _RatingsTab extends StatelessWidget {
+  final String riderId;
+  const _RatingsTab({required this.riderId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Header
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 16, left: 24, right: 24, bottom: 16),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF0C831F), Color(0xFF0A6E1A)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: const Text('My Ratings', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white)),
+        ),
+        // Summary
+        StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance.collection('users').doc(riderId).snapshots(),
+          builder: (context, snapshot) {
+            final data = snapshot.data?.data() as Map<String, dynamic>?;
+            final rating = (data?['rating'] ?? 0.0).toDouble();
+            final count = (data?['ratingCount'] ?? 0).toInt();
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              color: Colors.white,
+              child: Column(
+                children: [
+                  Text(
+                    rating > 0 ? rating.toStringAsFixed(1) : '--',
+                    style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (i) => Icon(
+                      i < rating.round() ? Icons.star_rounded : Icons.star_outline_rounded,
+                      color: const Color(0xFFFBC02D), size: 24,
+                    )),
+                  ),
+                  const SizedBox(height: 4),
+                  Text('$count ${count == 1 ? 'review' : 'reviews'}',
+                      style: const TextStyle(color: AppColors.textSecondary)),
+                ],
+              ),
+            );
+          },
+        ),
+        const Divider(height: 1),
+        // Reviews list
+        Expanded(
+          child: StreamBuilder<List<FeedbackModel>>(
+            stream: FeedbackService().getRiderFeedback(riderId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen));
+              }
+              final reviews = snapshot.data ?? [];
+              if (reviews.isEmpty) {
+                return const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.star_border, size: 64, color: AppColors.textHint),
+                      SizedBox(height: 16),
+                      Text('No ratings yet', style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+                    ],
+                  ),
+                );
+              }
+              return ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: reviews.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final review = reviews[index];
+                  final dateStr = DateFormat('dd MMM yyyy').format(review.timestamp);
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            ...List.generate(5, (i) => Icon(
+                              i < (review.riderRating ?? 0).round() ? Icons.star_rounded : Icons.star_outline_rounded,
+                              color: const Color(0xFFFBC02D), size: 18,
+                            )),
+                            const Spacer(),
+                            Text(dateStr, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                          ],
+                        ),
+                        if (review.reviewText.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Text(review.reviewText, style: const TextStyle(fontSize: 14, height: 1.4)),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

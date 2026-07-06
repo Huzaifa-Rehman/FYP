@@ -7,6 +7,8 @@ import '../models/cart_model.dart';
 import '../services/order_service.dart';
 import '../utils/app_colors.dart';
 import 'track_order_screen.dart';
+import '../widgets/rate_order_card.dart';
+import 'submit_feedback_screen.dart';
 
 class OrderHistoryScreen extends StatelessWidget {
   const OrderHistoryScreen({super.key});
@@ -69,8 +71,25 @@ class OrderHistoryScreen extends StatelessWidget {
     final dateStr = order.createdAt != null 
         ? DateFormat('dd MMM yyyy, hh:mm a').format(order.createdAt!) 
         : 'Recently';
+    final user = Provider.of<UserModel>(context, listen: false);
 
-    return Card(
+    return Column(
+      children: [
+        RateOrderCard(
+          order: order,
+          onRate: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SubmitFeedbackScreen(
+                  order: order,
+                  customerId: user.uid ?? '',
+                ),
+              ),
+            );
+          },
+        ),
+        Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -153,6 +172,8 @@ class OrderHistoryScreen extends StatelessWidget {
           ),
         ),
       ),
+      ),
+      ],
     );
   }
 

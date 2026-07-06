@@ -579,8 +579,9 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                         const Icon(Icons.star,
                             color: Color(0xFFFBC02D), size: 16),
                         const SizedBox(width: 4),
-                        const Text('4.8 ★',
-                            style: TextStyle(
+                        Text(
+                            '${(riderData?['rating'] ?? 0.0).toDouble() > 0 ? (riderData?['rating']).toStringAsFixed(1) : 'New'} ★',
+                            style: const TextStyle(
                                 fontWeight: FontWeight.w700, fontSize: 13)),
                         if (riderPhone.isNotEmpty && riderPhone != 'No Phone Number') ...[
                           const SizedBox(width: 8),

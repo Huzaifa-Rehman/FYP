@@ -31,6 +31,7 @@ class OrderModel {
   final String riderPayoutStatus; // 'unpaid', 'paid'
   final DateTime? createdAt;
   final DateTime? deliveredAt;
+  final bool isRated;
 
   OrderModel({
     this.id,
@@ -54,6 +55,7 @@ class OrderModel {
     this.riderPayoutStatus = 'unpaid',
     this.createdAt,
     this.deliveredAt,
+    this.isRated = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -78,6 +80,7 @@ class OrderModel {
       'riderPayoutStatus': riderPayoutStatus,
       'created_at': createdAt ?? FieldValue.serverTimestamp(),
       'delivered_at': deliveredAt,
+      'isRated': isRated,
     };
   }
 
@@ -108,6 +111,7 @@ class OrderModel {
       riderPayoutStatus: data['riderPayoutStatus'] ?? 'unpaid',
       createdAt: (data['created_at'] as Timestamp?)?.toDate(),
       deliveredAt: (data['delivered_at'] as Timestamp?)?.toDate(),
+      isRated: data['isRated'] ?? false,
     );
   }
 }

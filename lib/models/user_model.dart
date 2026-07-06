@@ -13,6 +13,8 @@ class UserModel extends ChangeNotifier {
   String? _operatingHours;
   bool _isStoreOpen = true;
   bool _isLoggedIn = false;
+  double _rating = 0.0;
+  int _ratingCount = 0;
 
   // Getters
   String? get uid => _uid;
@@ -26,6 +28,8 @@ class UserModel extends ChangeNotifier {
   String? get operatingHours => _operatingHours;
   bool get isStoreOpen => _isStoreOpen;
   bool get isLoggedIn => _isLoggedIn;
+  double get rating => _rating;
+  int get ratingCount => _ratingCount;
 
   // Set user data after login/signup
   void setUser({
@@ -39,6 +43,8 @@ class UserModel extends ChangeNotifier {
     String? businessAddress,
     String? operatingHours,
     bool isStoreOpen = true,
+    double rating = 0.0,
+    int ratingCount = 0,
   }) {
     _uid = uid;
     _email = email;
@@ -51,6 +57,8 @@ class UserModel extends ChangeNotifier {
     _operatingHours = operatingHours;
     _isStoreOpen = isStoreOpen;
     _isLoggedIn = true;
+    _rating = rating;
+    _ratingCount = ratingCount;
     
     // Start listening for notifications
     NotificationService().startFirestoreNotificationListener(uid);
@@ -91,6 +99,8 @@ class UserModel extends ChangeNotifier {
     _operatingHours = null;
     _isStoreOpen = true;
     _isLoggedIn = false;
+    _rating = 0.0;
+    _ratingCount = 0;
     notifyListeners();
   }
 }

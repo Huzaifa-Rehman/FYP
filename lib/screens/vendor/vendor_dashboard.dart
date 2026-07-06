@@ -16,7 +16,9 @@ import 'add_product_screen.dart';
 import 'vendor_profile_screen.dart';
 import 'vendor_orders_screen.dart';
 import 'vendor_order_detail_screen.dart';
+import 'vendor_order_detail_screen.dart';
 import '../../services/inventory_predictor.dart';
+import 'vendor_reviews_screen.dart';
 
 class VendorDashboard extends StatefulWidget {
   const VendorDashboard({super.key});
@@ -129,6 +131,7 @@ class _VendorDashboardState extends State<VendorDashboard> {
           ),
           _InventoryTab(user: user, productService: productService),
           _EarningsTab(user: user, orderService: orderService),
+          VendorReviewsScreen(vendorId: user.uid ?? ''),
           _SettingsTab(user: user),
         ],
       ),
@@ -149,7 +152,8 @@ class _VendorDashboardState extends State<VendorDashboard> {
           _navItem(Icons.grid_view_rounded, "Dashboard", 0),
           _navItem(Icons.inventory_2_outlined, "Inventory", 1),
           _navItem(Icons.account_balance_wallet_outlined, "Earnings", 2),
-          _navItem(Icons.settings_outlined, "Settings", 3),
+          _navItem(Icons.rate_review_outlined, "Reviews", 3),
+          _navItem(Icons.settings_outlined, "Settings", 4),
         ],
       ),
     );

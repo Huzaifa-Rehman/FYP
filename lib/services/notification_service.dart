@@ -2,6 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 
 class NotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
@@ -105,13 +106,22 @@ class NotificationService {
     }
   }
 
+  StreamSubscription<QuerySnapshot>? _notificationSubscription;
+
   void startFirestoreNotificationListener(String userId) {
-    FirebaseFirestore.instance
+    _notificationSubscription?.cancel();
+    bool isInitialLoad = true;
+
+    _notificationSubscription = FirebaseFirestore.instance
         .collection('notifications')
         .where('userId', isEqualTo: userId)
         .where('isRead', isEqualTo: false)
         .snapshots()
         .listen((snapshot) {
+      if (isInitialLoad) {
+        isInitialLoad = false;
+        return;
+      }
       for (var change in snapshot.docChanges) {
         if (change.type == DocumentChangeType.added) {
           final data = change.doc.data() as Map<String, dynamic>;

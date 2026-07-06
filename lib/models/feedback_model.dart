@@ -5,7 +5,10 @@ class FeedbackModel {
   final String customerId;
   final String vendorId;
   final String? orderId;
-
+  final String? riderId;
+  final double vendorRating;
+  final double? riderRating;
+  final bool isHidden;
   final String reviewText;
   final DateTime timestamp;
 
@@ -14,7 +17,10 @@ class FeedbackModel {
     required this.customerId,
     required this.vendorId,
     this.orderId,
-
+    this.riderId,
+    required this.vendorRating,
+    this.riderRating,
+    this.isHidden = false,
     required this.reviewText,
     required this.timestamp,
   });
@@ -24,7 +30,10 @@ class FeedbackModel {
       'customerId': customerId,
       'vendorId': vendorId,
       'orderId': orderId,
-
+      'riderId': riderId,
+      'vendorRating': vendorRating,
+      'riderRating': riderRating,
+      'isHidden': isHidden,
       'reviewText': reviewText,
       'timestamp': timestamp,
     };
@@ -37,8 +46,11 @@ class FeedbackModel {
       customerId: data['customerId'],
       vendorId: data['vendorId'],
       orderId: data['orderId'],
-
-      reviewText: data['reviewText'],
+      riderId: data['riderId'],
+      vendorRating: (data['vendorRating'] ?? 5.0).toDouble(),
+      riderRating: data['riderRating'] != null ? data['riderRating'].toDouble() : null,
+      isHidden: data['isHidden'] ?? false,
+      reviewText: data['reviewText'] ?? '',
       timestamp: (data['timestamp'] as Timestamp).toDate(),
     );
   }

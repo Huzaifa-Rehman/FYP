@@ -1,0 +1,32 @@
+// Some Flutter plugins ship compileSdk 34 and Kotlin JVM 11 while the app uses
+// compileSdk 36 and Java/Kotlin 17. finalizeDsl aligns SDK levels for AGP 8+.
+gradle.beforeProject { project ->
+    if (project.name == "app" || project.name == "gradle") {
+        return
+    }
+
+    project.pluginManager.withPlugin("com.android.library") {
+        project.androidComponents {
+            finalizeDsl { extension ->
+                if (extension.compileSdk < 36) {
+                    extension.compileSdk = 36
+                }
+                if (extension.defaultConfig.targetSdk != null && extension.defaultConfig.targetSdk < 36) {
+                    extension.defaultConfig.targetSdk = 36
+                }
+                extension.compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
+            }
+        }
+
+        project.afterEvaluate {
+            project.tasks.configureEach { task ->
+                if (task.hasProperty("kotlinOptions")) {
+                    task.kotlinOptions.jvmTarget = "17"
+                }
+            }
+        }
+    }
+}
