@@ -27,7 +27,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
   late TabController _tabController;
   final List<String> _filters = ['Delivery', 'Pick-up', 'Sort', 'Free delivery', 'Price'];
 
-  Stream<List<ProductModel>>? _searchStream;
+  late final Stream<List<ProductModel>> _productsStream;
   String _lastQuery = '';
   List<String> _selectedCategories = ['All'];
   List<String> _selectedVendors = [];
@@ -36,9 +36,10 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _productsStream = Provider.of<ProductService>(context, listen: false).getProducts();
     if (widget.initialQuery != null) {
       _searchController.text = widget.initialQuery!;
-      _onSearchChanged(widget.initialQuery!);
+      _lastQuery = widget.initialQuery!;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FocusScope.of(context).requestFocus(_focusNode);
@@ -47,15 +48,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
 
   void _onSearchChanged(String query) {
     if (query == _lastQuery) return;
-    _lastQuery = query;
-    if (query.isEmpty) {
-      setState(() => _searchStream = null);
-    } else {
-      final productService = Provider.of<ProductService>(context, listen: false);
-      setState(() {
-        _searchStream = productService.searchProducts(query);
-      });
-    }
+    setState(() => _lastQuery = query);
   }
 
   @override
@@ -264,40 +257,57 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
   Widget _buildProductResults() {
     if (_searchController.text.isEmpty) return _buildBeforeSearchState();
 
-    return StreamBuilder<List<ProductModel>>(
-      stream: _searchStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        var results = snapshot.data ?? [];
-        
-        if (!_selectedCategories.contains('All')) {
-          results = results.where((product) => _selectedCategories.contains(product.category)).toList();
-        }
-        if (_selectedVendors.isNotEmpty) {
-          results = results.where((product) => _selectedVendors.contains(product.vendorName)).toList();
-        }
+    final query = _searchController.text;
 
-        if (results.isEmpty) return _buildEmptyState();
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('orders').snapshots(),
+      builder: (context, ordersSnapshot) {
+        final vendorSales = ordersSnapshot.hasData
+            ? ProductService.vendorSalesFromOrders(ordersSnapshot.data!.docs)
+            : <String, Map<String, int>>{};
 
-        return CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: _buildRecommendedSection(results)),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              sliver: SliverToBoxAdapter(
-                child: Text('${results.length} results for "${_searchController.text}"', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => _FoodpandaStyleProductCard(product: results[index]),
-                  childCount: results.length,
+        return StreamBuilder<List<ProductModel>>(
+          stream: _productsStream,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            var results = (snapshot.data ?? [])
+                .where((product) => ProductService.matchesSearchQuery(product, query))
+                .toList();
+
+            if (!_selectedCategories.contains('All')) {
+              results = results.where((product) => _selectedCategories.contains(product.category)).toList();
+            }
+            if (_selectedVendors.isNotEmpty) {
+              results = results.where((product) => _selectedVendors.contains(product.vendorName)).toList();
+            }
+
+            if (results.isEmpty) return _buildEmptyState();
+
+            final recommended = ProductService.recommendedFromSearchResults(results, vendorSales);
+
+            return CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: _buildRecommendedSection(recommended)),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  sliver: SliverToBoxAdapter(
+                    child: Text('${results.length} results for "${_searchController.text}"', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  ),
                 ),
-              ),
-            ),
-          ],
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => _FoodpandaStyleProductCard(product: results[index]),
+                      childCount: results.length,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -363,7 +373,10 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                   runSpacing: 8,
                   children: popularSearches.map((s) {
                     return GestureDetector(
-                      onTap: () => setState(() => _searchController.text = s),
+                      onTap: () {
+                        _searchController.text = s;
+                        _onSearchChanged(s);
+                      },
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
@@ -445,15 +458,16 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
   }
 
   Widget _buildStoreResults() {
-    final query = _searchController.text.toLowerCase();
+    if (_searchController.text.isEmpty) return _buildBeforeSearchState();
+
+    final query = _searchController.text;
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance.collection('users').where('role', isEqualTo: 'Vendor').snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
         final vendors = snapshot.data!.docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
-          final name = (data['business_name'] ?? '').toString().toLowerCase();
-          return name.contains(query);
+          return ProductService.matchesVendorSearchQuery(data, query);
         }).toList();
 
         if (vendors.isEmpty) return _buildEmptyState();
@@ -589,15 +603,14 @@ class _FoodpandaStyleProductCard extends StatelessWidget {
       return GestureDetector(
         onTap: () => cart.addItemFromModel(product),
         child: Container(
-          width: 80, height: 34,
+          width: 32, height: 32,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
+            shape: BoxShape.circle,
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
           ),
           alignment: Alignment.center,
-          child: const Text('ADD', style: TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.w900, fontSize: 13)),
+          child: const Icon(Icons.add, color: AppColors.primaryGreen, size: 20),
         ),
       );
     }

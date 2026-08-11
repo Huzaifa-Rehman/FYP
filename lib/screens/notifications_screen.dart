@@ -86,11 +86,19 @@ class NotificationsScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(data['title'] ?? 'Notification', style: TextStyle(fontWeight: isRead ? FontWeight.w600 : FontWeight.w800, fontSize: 15)),
-                                if (!isRead)
+                                Expanded(
+                                  child: Text(
+                                    data['title'] ?? 'Notification',
+                                    style: TextStyle(fontWeight: isRead ? FontWeight.w600 : FontWeight.w800, fontSize: 15),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (!isRead) ...[
+                                  const SizedBox(width: 8),
                                   Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.primaryGreen, shape: BoxShape.circle)),
+                                ],
                               ],
                             ),
                             const SizedBox(height: 4),

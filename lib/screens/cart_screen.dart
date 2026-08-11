@@ -482,13 +482,14 @@ class CartScreen extends StatelessWidget {
                                         );
                                       },
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        width: 28, height: 28,
                                         decoration: BoxDecoration(
                                           color: Colors.white,
-                                          borderRadius: BorderRadius.circular(4),
-                                          border: Border.all(color: AppColors.primaryGreen),
+                                          shape: BoxShape.circle,
+                                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
                                         ),
-                                        child: const Text('ADD', style: TextStyle(color: AppColors.primaryGreen, fontSize: 10, fontWeight: FontWeight.bold)),
+                                        alignment: Alignment.center,
+                                        child: const Icon(Icons.add, color: AppColors.primaryGreen, size: 16),
                                       ),
                                     ),
                                   ),

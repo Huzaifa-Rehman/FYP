@@ -8,6 +8,9 @@ import 'earnings_payouts_tab.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
+import '../../providers/theme_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 
 class AdminDashboard extends StatefulWidget {
@@ -125,83 +128,101 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildOverview() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Overview',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Welcome back! Here\'s a snapshot of SpeedyGrocer\'s\nperformance and operations management.',
-            style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
-          ),
-          const SizedBox(height: 32),
-          
-          // Summary Cards Row
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                SummaryCard(
-                  title: 'Total\nUsers',
-                  value: '2,500',
-                  icon: Icons.people_outline,
-                  color: AppColors.primaryGreen,
-                ),
-                const SizedBox(width: 20),
-                SummaryCard(
-                  title: 'New\nOrders',
-                  value: '350',
-                  icon: Icons.shopping_cart_outlined,
-                  color: const Color(0xFFFF9800),
-                ),
-                const SizedBox(width: 20),
-                SummaryCard(
-                  title: 'Avg\nDelivery Time',
-                  value: '72 mins',
-                  icon: Icons.access_time,
-                  color: const Color(0xFFE53935),
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 32),
-          
-          // Layout below summary cards
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 900;
+        final padding = isWide ? 32.0 : 16.0;
+
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(padding),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                flex: 2,
-                child: Column(
+              const Text(
+                'Overview',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Welcome back! Here\'s a snapshot of SpeedyGrocer\'s\nperformance and operations management.',
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
+              ),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: SummaryCard(
+                      title: 'Total Users',
+                      value: '2,500',
+                      icon: Icons.people_outline,
+                      color: AppColors.primaryGreen,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SummaryCard(
+                      title: 'New Orders',
+                      value: '350',
+                      icon: Icons.shopping_cart_outlined,
+                      color: const Color(0xFFFF9800),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SummaryCard(
+                      title: 'Avg Delivery',
+                      value: '72 min',
+                      icon: Icons.access_time,
+                      color: const Color(0xFFE53935),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              if (isWide)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        children: [
+                          _buildChartCard('Monthly Revenue Trend', '124k', true),
+                          const SizedBox(height: 24),
+                          _buildRecentOrders(),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        children: [
+                          _buildCategoryVolumeCard(),
+                          const SizedBox(height: 24),
+                          _buildStockAlertsCard(),
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Column(
                   children: [
                     _buildChartCard('Monthly Revenue Trend', '124k', true),
-                    const SizedBox(height: 24),
-                    _buildRecentOrders(),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
-              Expanded(
-                flex: 1,
-                child: Column(
-                  children: [
+                    const SizedBox(height: 16),
                     _buildCategoryVolumeCard(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
+                    _buildRecentOrders(),
+                    const SizedBox(height: 16),
                     _buildStockAlertsCard(),
                   ],
                 ),
-              ),
+              const SizedBox(height: 40),
             ],
           ),
-          const SizedBox(height: 40),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -224,36 +245,46 @@ class _AdminDashboardState extends State<AdminDashboard> {
             const SizedBox(height: 4),
             Text(subtitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.textSecondary)),
           ],
-          const Spacer(),
+          const SizedBox(height: 16),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: List.generate(7, (index) {
+                final heights = [40.0, 60.0, 80.0, 50.0, 110.0, 70.0, 90.0];
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Container(
+                      height: heights[index],
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen.withOpacity(index == 4 ? 1.0 : 0.4),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 8),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: List.generate(7, (index) {
-              final heights = [40.0, 60.0, 80.0, 50.0, 110.0, 70.0, 90.0];
-              return Container(
-                width: 30,
-                height: heights[index],
-                decoration: BoxDecoration(
-                  color: AppColors.primaryGreen.withOpacity(index == 4 ? 1.0 : 0.4),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+              return Expanded(
+                child: Center(
+                  child: Text(
+                    days[index],
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: index == 4 ? AppColors.primaryGreen : Colors.grey,
+                      fontWeight: index == 4 ? FontWeight.bold : FontWeight.normal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               );
             }),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: const [
-              Text('Mon', style: TextStyle(fontSize: 10, color: Colors.grey)),
-              Text('Tue', style: TextStyle(fontSize: 10, color: Colors.grey)),
-              Text('Wed', style: TextStyle(fontSize: 10, color: Colors.grey)),
-              Text('Thu', style: TextStyle(fontSize: 10, color: Colors.grey)),
-              Text('Fri', style: TextStyle(fontSize: 10, color: AppColors.primaryGreen, fontWeight: FontWeight.bold)),
-              Text('Sat', style: TextStyle(fontSize: 10, color: Colors.grey)),
-              Text('Sun', style: TextStyle(fontSize: 10, color: Colors.grey)),
-            ],
-          ),
-          const Spacer(),
         ],
       ),
     );
@@ -290,7 +321,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         children: [
           Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
           const SizedBox(width: 12),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
+          Flexible(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
         ],
       ),
     );
@@ -355,7 +386,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _buildRecentOrders() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -367,7 +398,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Recent Orders', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           _recentOrderRow('#SG-8472', 'Ahmad Raza', 'Rs. 565', 'Delivered', AppColors.primaryGreen),
           _recentOrderRow('#SG-8473', 'Sara Khan', 'Rs. 1,240', 'Processing', const Color(0xFFFF9800)),
           _recentOrderRow('#SG-8474', 'Ali Hassan', 'Rs. 320', 'On the way', const Color(0xFF2196F3)),
@@ -379,20 +410,49 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _recentOrderRow(String id, String customer, String total, String status, Color statusColor) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(flex: 2, child: Text(id, style: const TextStyle(fontWeight: FontWeight.w700))),
-          Expanded(flex: 3, child: Text(customer, style: const TextStyle(color: AppColors.textSecondary))),
-          Expanded(flex: 2, child: Text(total, style: const TextStyle(fontWeight: FontWeight.w700))),
+          SizedBox(
+            width: 70,
+            child: Text(
+              id,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
           Expanded(
-            flex: 3,
-            child: Container(
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-              child: Text(status, style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.w700)),
+            child: Text(
+              customer,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 65,
+            child: Text(
+              total,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              status,
+              style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w700),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -564,9 +624,8 @@ class SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 130,
-      height: 200,
-      padding: const EdgeInsets.all(20),
+      height: 160,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -587,12 +646,12 @@ class SummaryCard extends StatelessWidget {
             child: Icon(icon, color: color, size: 20),
           ),
           const Spacer(),
-          Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600, height: 1.3)),
-          const SizedBox(height: 8),
+          Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600, height: 1.3), maxLines: 2, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 6),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+            child: Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
           ),
         ],
       ),
@@ -751,7 +810,7 @@ class _VendorRiderOversightTab extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Vendor & Rider Oversight', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+          const Text('Vendor & Rider Oversight', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
           const SizedBox(height: 32),
           
           // Section: Pending Vendors
@@ -1454,11 +1513,204 @@ class _InventoryTab extends StatelessWidget {
 
 /* ===================== 6.6 SETTINGS ===================== */
 
-class _SettingsTab extends StatelessWidget {
+class _SettingsTab extends StatefulWidget {
   const _SettingsTab();
 
   @override
+  State<_SettingsTab> createState() => _SettingsTabState();
+}
+
+class _SettingsTabState extends State<_SettingsTab> {
+  bool _pushNotifications = true;
+  bool _loadingPrefs = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _pushNotifications = prefs.getBool('admin_push_notifications') ?? true;
+      _loadingPrefs = false;
+    });
+  }
+
+  Future<void> _togglePushNotifications(bool enabled) async {
+    if (enabled) {
+      final settings = await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      if (settings.authorizationStatus != AuthorizationStatus.authorized &&
+          settings.authorizationStatus != AuthorizationStatus.provisional) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Notification permission was denied')),
+          );
+        }
+        return;
+      }
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('admin_push_notifications', enabled);
+
+    final user = Provider.of<AuthService>(context, listen: false).currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
+        {'pushNotificationsEnabled': enabled},
+        SetOptions(merge: true),
+      );
+    }
+
+    if (mounted) {
+      setState(() => _pushNotifications = enabled);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(enabled ? 'Push notifications enabled' : 'Push notifications disabled')),
+      );
+    }
+  }
+
+  void _showChangePasswordDialog() {
+    final currentController = TextEditingController();
+    final newController = TextEditingController();
+    final confirmController = TextEditingController();
+    bool obscureCurrent = true;
+    bool obscureNew = true;
+    bool obscureConfirm = true;
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Change Password'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: currentController,
+                      obscureText: obscureCurrent,
+                      decoration: InputDecoration(
+                        labelText: 'Current Password',
+                        suffixIcon: IconButton(
+                          icon: Icon(obscureCurrent ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                          onPressed: () => setDialogState(() => obscureCurrent = !obscureCurrent),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: newController,
+                      obscureText: obscureNew,
+                      decoration: InputDecoration(
+                        labelText: 'New Password',
+                        suffixIcon: IconButton(
+                          icon: Icon(obscureNew ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                          onPressed: () => setDialogState(() => obscureNew = !obscureNew),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: confirmController,
+                      obscureText: obscureConfirm,
+                      decoration: InputDecoration(
+                        labelText: 'Confirm New Password',
+                        suffixIcon: IconButton(
+                          icon: Icon(obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                          onPressed: () => setDialogState(() => obscureConfirm = !obscureConfirm),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          final current = currentController.text.trim();
+                          final newPass = newController.text.trim();
+                          final confirm = confirmController.text.trim();
+
+                          if (current.isEmpty || newPass.isEmpty || confirm.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please fill in all fields')),
+                            );
+                            return;
+                          }
+                          if (newPass.length < 6) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('New password must be at least 6 characters')),
+                            );
+                            return;
+                          }
+                          if (newPass != confirm) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('New passwords do not match')),
+                            );
+                            return;
+                          }
+
+                          setDialogState(() => isLoading = true);
+                          try {
+                            await Provider.of<AuthService>(context, listen: false).changePassword(
+                              currentPassword: current,
+                              newPassword: newPass,
+                            );
+                            if (context.mounted) {
+                              Navigator.pop(dialogContext);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Password changed successfully')),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+                              );
+                            }
+                          } finally {
+                            if (context.mounted) {
+                              setDialogState(() => isLoading = false);
+                            }
+                          }
+                        },
+                  child: isLoading
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Update'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isDarkMode = themeProvider.themeMode == ThemeMode.dark;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(32),
       child: Column(
@@ -1483,21 +1735,33 @@ class _SettingsTab extends StatelessWidget {
                   leading: const Icon(Icons.notifications_active_outlined, color: AppColors.primaryGreen),
                   title: const Text('Push Notifications'),
                   subtitle: const Text('Manage alert preferences for new orders and registrations'),
-                  trailing: Switch(value: true, onChanged: (val) {}, activeColor: AppColors.primaryGreen),
+                  trailing: _loadingPrefs
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Switch(
+                          value: _pushNotifications,
+                          onChanged: _togglePushNotifications,
+                          activeColor: AppColors.primaryGreen,
+                        ),
                 ),
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.dark_mode_outlined, color: AppColors.primaryGreen),
                   title: const Text('Dark Mode'),
                   subtitle: const Text('Toggle dashboard appearance'),
-                  trailing: Switch(value: false, onChanged: (val) {}, activeColor: AppColors.primaryGreen),
+                  trailing: Switch(
+                    value: isDarkMode,
+                    onChanged: (val) {
+                      themeProvider.setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
+                    },
+                    activeColor: AppColors.primaryGreen,
+                  ),
                 ),
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.lock_outline, color: AppColors.primaryGreen),
                   title: const Text('Change Password'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  onTap: _showChangePasswordDialog,
                 ),
                 const Divider(),
                 ListTile(

@@ -8,11 +8,16 @@ class AppSeeder {
     try {
       // Seed Categories
       final categoriesRef = db.collection('categories');
-      final categoriesSnapshot = await categoriesRef.limit(1).get();
-      if (categoriesSnapshot.docs.isEmpty) {
-        for (var cat in AppData.groceryCategories) {
+      final existingCategories = await categoriesRef.get();
+      final existingLabels = existingCategories.docs
+          .map((doc) => doc.data()['label'] as String? ?? '')
+          .toSet();
+
+      for (var cat in AppData.groceryCategories) {
+        final label = cat['label'] as String;
+        if (!existingLabels.contains(label)) {
           await categoriesRef.add({
-            'label': cat['label'],
+            'label': label,
             'imagePath': cat['imagePath'],
             'color': cat['color'],
             'iconCodePoint': cat['icon']?.codePoint,
@@ -21,9 +26,13 @@ class AppSeeder {
             'createdAt': FieldValue.serverTimestamp(),
           });
         }
-        for (var cat in AppData.snackCategories) {
+      }
+
+      for (var cat in AppData.snackCategories) {
+        final label = cat['label'] as String;
+        if (!existingLabels.contains(label)) {
           await categoriesRef.add({
-            'label': cat['label'],
+            'label': label,
             'imagePath': cat['imagePath'],
             'color': cat['color'],
             'iconCodePoint': cat['icon']?.codePoint,
@@ -32,7 +41,6 @@ class AppSeeder {
             'createdAt': FieldValue.serverTimestamp(),
           });
         }
-        print('Seeded categories.');
       }
 
       // Seed Popular Searches

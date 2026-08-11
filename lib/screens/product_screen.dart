@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../utils/app_colors.dart';
+import '../utils/app_data.dart';
 import '../models/product_model.dart';
 import '../services/product_service.dart';
 import '../models/cart_model.dart';
@@ -18,12 +19,9 @@ class ProductScreen extends StatefulWidget {
 
 class _ProductScreenState extends State<ProductScreen> {
   late String _selectedFilter;
-  final List<String> _filters = [
+  late final List<String> _filters = [
     'All Products',
-    'Vegetables & Fruits',
-    'Dairy, Bread & Eggs',
-    'Snacks & Drinks',
-    'Bakery & Biscuits'
+    ...AppData.allProductCategoryLabels,
   ];
 
   Stream<List<ProductModel>>? _productStream;
@@ -41,9 +39,13 @@ class _ProductScreenState extends State<ProductScreen> {
   void _updateStream() {
     final productService = Provider.of<ProductService>(context, listen: false);
     setState(() {
-      _productStream = _selectedFilter == 'All Products' 
-          ? productService.getProducts() 
-          : productService.getProductsByCategory(_selectedFilter);
+      _productStream = productService.getProducts().map((products) {
+        if (_selectedFilter == 'All Products') return products;
+        return products
+            .where((product) =>
+                AppData.effectiveProductCategory(product.category, product.name) == _selectedFilter)
+            .toList();
+      });
     });
   }
 
@@ -248,15 +250,14 @@ class _ProductListItem extends StatelessWidget {
       return GestureDetector(
         onTap: () => cart.addItemFromModel(product),
         child: Container(
-          width: 80, height: 34,
+          width: 32, height: 32,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
+            shape: BoxShape.circle,
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
           ),
           alignment: Alignment.center,
-          child: const Text('ADD', style: TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.w900, fontSize: 13)),
+          child: const Icon(Icons.add, color: AppColors.primaryGreen, size: 20),
         ),
       );
     }

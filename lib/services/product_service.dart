@@ -227,18 +227,94 @@ class ProductService {
     }
   }
 
+  static bool _textMatchesQuery(String haystack, String query) {
+    if (haystack.contains(query)) return true;
+    if (query.length > 2 && query.endsWith('s') && haystack.contains(query.substring(0, query.length - 1))) {
+      return true;
+    }
+    if (!query.endsWith('s') && haystack.contains('${query}s')) return true;
+    return false;
+  }
+
+  static Map<String, Map<String, int>> vendorSalesFromOrders(
+    Iterable<QueryDocumentSnapshot> orderDocs,
+  ) {
+    final counts = <String, Map<String, int>>{};
+    for (final doc in orderDocs) {
+      final data = doc.data() as Map<String, dynamic>;
+      if (data['status'] == 'cancelled') continue;
+
+      final vendorId = data['vendorId']?.toString() ?? '';
+      if (vendorId.isEmpty) continue;
+
+      final items = data['items'] as List<dynamic>? ?? [];
+      for (final item in items) {
+        final name = (item['name'] as String? ?? '').trim();
+        final quantity = (item['quantity'] as num?)?.toInt() ?? 1;
+        if (name.isEmpty) continue;
+
+        counts.putIfAbsent(name, () => {});
+        counts[name]![vendorId] = (counts[name]![vendorId] ?? 0) + quantity;
+      }
+    }
+    return counts;
+  }
+
+  static List<ProductModel> recommendedFromSearchResults(
+    List<ProductModel> results,
+    Map<String, Map<String, int>> vendorSales,
+  ) {
+    final byName = <String, List<ProductModel>>{};
+    for (final product in results) {
+      final key = product.name.trim().toLowerCase();
+      byName.putIfAbsent(key, () => []);
+      byName[key]!.add(product);
+    }
+
+    final recommended = <ProductModel>[];
+    for (final group in byName.values) {
+      group.sort((a, b) {
+        final salesA = vendorSales[a.name]?[a.vendorId] ?? 0;
+        final salesB = vendorSales[b.name]?[b.vendorId] ?? 0;
+        return salesB.compareTo(salesA);
+      });
+      recommended.add(group.first);
+    }
+
+    recommended.sort((a, b) {
+      final salesA = vendorSales[a.name]?[a.vendorId] ?? 0;
+      final salesB = vendorSales[b.name]?[b.vendorId] ?? 0;
+      return salesB.compareTo(salesA);
+    });
+
+    return recommended.take(3).toList();
+  }
+
+  // ───────── Local Search ─────────
+  static bool matchesSearchQuery(ProductModel product, String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return true;
+
+    return _textMatchesQuery(product.name.toLowerCase(), q);
+  }
+
+  static bool matchesVendorSearchQuery(Map<String, dynamic> vendor, String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return true;
+
+    final haystack = [
+      vendor['business_name'],
+      vendor['full_name'],
+      vendor['business_address'],
+    ].whereType<String>().join(' ').toLowerCase();
+
+    return _textMatchesQuery(haystack, q);
+  }
+
   // ───────── Search Products ─────────
   Stream<List<ProductModel>> searchProducts(String query) {
-    final q = query.toLowerCase();
-    
-    // For single prefix searches (fast and scales nicely)
-    // Uses the custom 'nameLower' field that is generated on write.
-    // NOTE: This will match prefixes of the product name (e.g. 'mil' matches 'milk').
-    return _mapProductsWithCorrectVendorNames(
-      _db.collection(_collection)
-          .where('nameLower', isGreaterThanOrEqualTo: q)
-          .where('nameLower', isLessThanOrEqualTo: '$q\uf8ff')
-          .snapshots()
+    return getProducts().map(
+      (products) => products.where((p) => matchesSearchQuery(p, query)).toList(),
     );
   }
 

@@ -436,7 +436,9 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
     final Set<Polyline> polylines = {};
 
     if (destinationPos != null) {
-      _checkAndFetchRoute(riderPos, destinationPos);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _checkAndFetchRoute(riderPos, destinationPos!);
+      });
       
       markers.add(
         Marker(

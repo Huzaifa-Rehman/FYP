@@ -227,6 +227,38 @@ class AuthService {
     await _auth.sendPasswordResetEmail(email: email);
   }
 
+  // ───────── Change Password ─────────
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = currentUser;
+    if (user == null) throw Exception('No logged-in user');
+
+    final email = user.email;
+    if (email == null || email.isEmpty) {
+      throw Exception('Password change is not available for this account type');
+    }
+
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: currentPassword,
+    );
+
+    try {
+      await user.reauthenticateWithCredential(credential);
+      await user.updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        throw Exception('Current password is incorrect');
+      }
+      if (e.code == 'weak-password') {
+        throw Exception('New password is too weak');
+      }
+      throw Exception(e.message ?? 'Failed to change password');
+    }
+  }
+
   // ───────── Update Vendor Store Details ─────────
   Future<void> updateVendorStoreDetails({
     required String businessName,

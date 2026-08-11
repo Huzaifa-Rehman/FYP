@@ -23,11 +23,19 @@ class StoreDetailScreen extends StatefulWidget {
 class _StoreDetailScreenState extends State<StoreDetailScreen> {
   late Stream<List<ProductModel>> _productStream;
   final ProductService _productService = ProductService();
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
     _productStream = _productService.getVendorProducts(widget.vendorId);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -52,7 +60,19 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
       pinned: true,
       backgroundColor: AppColors.primaryGreen,
       flexibleSpace: FlexibleSpaceBar(
-        title: Text(storeName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+                decoration: const InputDecoration(
+                  hintText: 'Search products',
+                  hintStyle: TextStyle(color: Colors.white70),
+                  border: InputBorder.none,
+                ),
+                onChanged: (_) => setState(() {}),
+              )
+            : Text(storeName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
         background: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -68,7 +88,17 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
         onPressed: () => Navigator.pop(context),
       ),
       actions: [
-        IconButton(icon: const Icon(Icons.search, color: Colors.white), onPressed: () {}),
+        IconButton(
+          icon: Icon(_isSearching ? Icons.close : Icons.search, color: Colors.white),
+          onPressed: () {
+            setState(() {
+              if (_isSearching) {
+                _searchController.clear();
+              }
+              _isSearching = !_isSearching;
+            });
+          },
+        ),
         IconButton(icon: const Icon(Icons.share, color: Colors.white), onPressed: () {}),
       ],
     );
@@ -125,7 +155,9 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
           return const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator())));
         }
         
-        final products = snapshot.data ?? [];
+        final products = (snapshot.data ?? [])
+            .where((product) => ProductService.matchesSearchQuery(product, _searchController.text))
+            .toList();
         
         if (products.isEmpty) {
           return const SliverToBoxAdapter(
@@ -242,16 +274,15 @@ class _StoreProductListItem extends StatelessWidget {
       return GestureDetector(
         onTap: () => cart.addItemFromModel(product),
         child: Container(
-          width: 80,
-          height: 34,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
+            shape: BoxShape.circle,
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
           ),
           alignment: Alignment.center,
-          child: const Text('ADD', style: TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.w900, fontSize: 13)),
+          child: const Icon(Icons.add, color: AppColors.primaryGreen, size: 20),
         ),
       );
     }

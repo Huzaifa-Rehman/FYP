@@ -1020,7 +1020,7 @@ class _HomeContentState extends State<_HomeContent> {
           _buildFilterPills(),
 
           // 5. Vertical All Products List
-          _buildAllProductsList(),
+          _buildAllProductsList(vendorsDocs),
         ],
       ),
     );
@@ -1251,13 +1251,16 @@ class _HomeContentState extends State<_HomeContent> {
     );
   }
 
-  Widget _buildAllProductsList() {
+  Widget _buildAllProductsList(List<QueryDocumentSnapshot> vendorsDocs) {
     final productService = Provider.of<ProductService>(context, listen: false);
+    final vendorSections = <String, String>{};
+    for (final doc in vendorsDocs) {
+      final data = doc.data() as Map<String, dynamic>;
+      vendorSections[doc.id] = _getVendorCategory(data, doc.id);
+    }
     
     return StreamBuilder<List<ProductModel>>(
-      stream: _selectedCategory == 'All' 
-          ? productService.getProducts() 
-          : productService.getProductsByCategory(_selectedCategory),
+      stream: productService.getProducts(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -1273,15 +1276,35 @@ class _HomeContentState extends State<_HomeContent> {
           );
         }
 
-        final products = snapshot.data!;
+        final products = snapshot.data!.where((product) {
+          if (_selectedCategory == 'All') return true;
+
+          if (_selectedCategory == 'Health & Beauty') {
+            return vendorSections[product.vendorId] == 'Health & Beauty';
+          }
+
+          final effectiveCategory =
+              AppData.effectiveProductCategory(product.category, product.name);
+          return AppData.productCategoriesForShopSection(_selectedCategory)
+              .contains(effectiveCategory);
+        }).toList();
+
+        if (products.isEmpty) {
+          return Container(
+            height: 150,
+            alignment: Alignment.center,
+            child: Text(
+              'No products in $_selectedCategory category at the moment.',
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          );
+        }
 
         // Group products by category
         final Map<String, List<ProductModel>> groupedProducts = {};
         for (var product in products) {
-          final cat = product.category.isNotEmpty ? product.category : 'Other';
-          if (!groupedProducts.containsKey(cat)) {
-            groupedProducts[cat] = [];
-          }
+          final cat = AppData.effectiveProductCategory(product.category, product.name);
+          groupedProducts.putIfAbsent(cat, () => []);
           groupedProducts[cat]!.add(product);
         }
 
@@ -1468,15 +1491,14 @@ class _HomeProductCard extends StatelessWidget {
       return GestureDetector(
         onTap: () => cart.addItemFromModel(product),
         child: Container(
-          width: 80, height: 34,
+          width: 32, height: 32,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
+            shape: BoxShape.circle,
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4, offset: const Offset(0, 2))],
           ),
           alignment: Alignment.center,
-          child: const Text('ADD', style: TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.w900, fontSize: 13)),
+          child: const Icon(Icons.add, color: AppColors.primaryGreen, size: 20),
         ),
       );
     }

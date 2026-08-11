@@ -234,7 +234,7 @@ class ProfileScreen extends StatelessWidget {
                     _settingsTile(Icons.share_outlined, 'Share App', hasChevron: true, onTap: () {
                       showDialog(context: context, builder: (_) => AlertDialog(
                         title: const Text('Share SpeedyGrocer'),
-                        content: const Text('Invite friends to SpeedyGrocer and get ₹50 off your next order! \n\nLink: https://speedygrocer.app/invite/1234'),
+                        content: const Text('Invite friends to SpeedyGrocer and get Rs50 off your next order! \n\nLink: https://speedygrocer.app/invite/1234'),
                         actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Copy Link'))],
                       ));
                     }),

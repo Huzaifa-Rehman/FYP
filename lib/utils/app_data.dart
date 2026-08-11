@@ -170,4 +170,53 @@ class AppData {
     'Search "summer essentials"',
     'Search "bread"',
   ];
+
+  static List<String> get allProductCategoryLabels => [
+    ...groceryCategories.map((e) => e['label'] as String),
+    ...snackCategories.map((e) => e['label'] as String),
+  ];
+
+  static const List<String> freshBazaarCategoryLabels = ['Vegetables & Fruits'];
+
+  static List<String> productCategoriesForShopSection(String section) {
+    switch (section) {
+      case 'Fresh Bazaar':
+        return freshBazaarCategoryLabels;
+      case 'Groceries':
+        return allProductCategoryLabels
+            .where((label) => !freshBazaarCategoryLabels.contains(label))
+            .toList();
+      default:
+        return [];
+    }
+  }
+
+  static String effectiveProductCategory(String storedCategory, String productName) {
+    final name = productName.toLowerCase();
+    const keywordMap = {
+      'Drinks & Juices': ['cola', 'pepsi', 'sprite', 'juice', 'drink', 'soda', '7up', 'mirinda', 'water', 'fanta'],
+      'Chips & Namkeen': ['chips', 'lays', 'kurkure', 'namkeen', 'snack'],
+      'Tea, Coffee & More': ['tea', 'coffee', 'horlicks', 'complan'],
+      'Sweets & Chocolates': ['chocolate', 'sweet', 'candy'],
+      'Dairy, Bread & Eggs': ['milk', 'bread', 'egg', 'butter', 'cheese', 'yogurt', 'cream'],
+      'Vegetables & Fruits': ['apple', 'tomato', 'vegetable', 'fruit', 'banana', 'onion', 'potato', 'carrot'],
+      'Atta, Rice & Dal': ['atta', 'rice', 'dal', 'flour', 'basmati'],
+      'Oil, Ghee & Masala': ['oil', 'ghee', 'masala', 'spice', 'salt'],
+      'Chicken, Meat & Fish': ['chicken', 'meat', 'fish', 'mutton', 'beef'],
+      'Bakery & Biscuits': ['biscuit', 'cake', 'pastry'],
+      'Dry Fruits & Cereals': ['cereal', 'oats', 'cornflake', 'dry fruit', 'almond', 'cashew'],
+    };
+
+    for (final entry in keywordMap.entries) {
+      if (entry.value.any(name.contains)) {
+        return entry.key;
+      }
+    }
+
+    if (allProductCategoryLabels.contains(storedCategory)) {
+      return storedCategory;
+    }
+
+    return storedCategory.isNotEmpty ? storedCategory : allProductCategoryLabels.first;
+  }
 }

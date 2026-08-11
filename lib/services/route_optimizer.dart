@@ -66,8 +66,7 @@ class RouteOptimizer {
             );
           } else {
             print("RouteOptimizer Directions API Error: ${data['status']} — ${data['error_message'] ?? ''}");
-            // API error is definitive — no point trying other proxies
-            return null;
+            break;
           }
         } else {
           print("RouteOptimizer HTTP Error via $url: ${response.statusCode}");
@@ -77,8 +76,59 @@ class RouteOptimizer {
       }
     }
 
-    print("RouteOptimizer: All URLs failed. Falling back to straight line.");
-    return null;
+    return _fetchOsrmRoute(start, end);
+  }
+
+  Future<RouteData?> _fetchOsrmRoute(
+    Map<String, double> start,
+    Map<String, double> end,
+  ) async {
+    final url =
+        'https://router.project-osrm.org/route/v1/driving/'
+        '${start['lng']},${start['lat']};'
+        '${end['lng']},${end['lat']}'
+        '?overview=full&geometries=polyline';
+
+    try {
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return null;
+
+      final data = json.decode(response.body);
+      if (data['code'] != 'Ok' || (data['routes'] as List?)?.isEmpty != false) {
+        return null;
+      }
+
+      final route = data['routes'][0];
+      final String points = route['geometry'];
+      final double durationSeconds = (route['duration'] as num).toDouble();
+      final double distanceMeters = (route['distance'] as num).toDouble();
+
+      return RouteData(
+        polyline: _decodePolyline(points),
+        durationText: _formatDuration(durationSeconds.round()),
+        durationValue: durationSeconds.round(),
+        distanceText: _formatDistance(distanceMeters.round()),
+        distanceValue: distanceMeters.round(),
+      );
+    } catch (e) {
+      print('RouteOptimizer OSRM fallback failed: $e');
+      return null;
+    }
+  }
+
+  String _formatDuration(int seconds) {
+    final minutes = (seconds / 60).ceil();
+    if (minutes < 60) return '$minutes min';
+    final hours = minutes ~/ 60;
+    final remainingMinutes = minutes % 60;
+    return remainingMinutes == 0 ? '$hours hr' : '$hours hr $remainingMinutes min';
+  }
+
+  String _formatDistance(int meters) {
+    if (meters >= 1000) {
+      return '${(meters / 1000).toStringAsFixed(1)} km';
+    }
+    return '$meters m';
   }
 
   // ───────── Decode Google Maps Polyline ─────────
